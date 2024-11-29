@@ -1,113 +1,186 @@
+use itertools::Itertools;
 use num::{Signed, Zero};
 use std::{
     fmt::{self, Display},
+    iter::Sum,
+    mem::MaybeUninit,
     ops::{Add, Mul, Sub},
 };
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct Point2D<T> {
-    pub x: T,
-    pub y: T,
+pub struct Point<T, const D: usize> {
+    pub values: [T; D],
 }
 
-impl<T> Point2D<T> {
-    pub fn new(x: T, y: T) -> Self {
-        Point2D { x, y }
+pub type Point2D<T> = Point<T, 2>;
+pub type Point3D<T> = Point<T, 3>;
+
+impl<T, const D: usize> Point<T, D> {
+    pub fn x(&self) -> T
+    where
+        T: Copy,
+    {
+        self.values[0]
     }
 
+    pub fn y(&self) -> T
+    where
+        T: Copy,
+    {
+        self.values[1]
+    }
+
+    pub fn z(&self) -> T
+    where
+        T: Copy,
+    {
+        self.values[2]
+    }
+}
+
+impl<T> Point<T, 2> {
+    pub fn new(x: T, y: T) -> Self {
+        Point { values: [x, y] }
+    }
+
+    pub fn from((x, y): (T, T)) -> Self {
+        Point { values: [x, y] }
+    }
+}
+
+impl<T> Point<T, 3> {
+    pub fn new(x: T, y: T, z: T) -> Self {
+        Point { values: [x, y, z] }
+    }
+
+    pub fn from((x, y, z): (T, T, T)) -> Self {
+        Point { values: [x, y, z] }
+    }
+}
+
+impl<T, const D: usize> Point<T, D> {
     pub fn zero() -> Self
     where
-        T: Zero,
+        T: Zero + Copy,
     {
-        Point2D {
-            x: T::zero(),
-            y: T::zero(),
+        Point {
+            values: [T::zero(); D],
         }
     }
 
-    pub fn convert<U>(self) -> Point2D<U>
+    pub fn convert<U>(self) -> Point<U, D>
     where
         U: From<T>,
     {
-        Point2D {
-            x: U::from(self.x),
-            y: U::from(self.y),
+        Point {
+            values: self.values.map(|v| U::from(v)),
         }
     }
 }
 
-impl<T> From<(T, T)> for Point2D<T> {
-    fn from((x, y): (T, T)) -> Self {
-        Point2D { x, y }
-    }
-}
-
-impl<T> Add for Point2D<T>
+impl<T, const D: usize> Add for Point<T, D>
 where
     T: Add,
 {
-    type Output = Point2D<T::Output>;
+    type Output = Point<T::Output, D>;
 
-    fn add(self, other: Point2D<T>) -> Point2D<T::Output> {
-        Point2D {
-            x: self.x + other.x,
-            y: self.y + other.y,
+    fn add(self, other: Point<T, D>) -> Point<T::Output, D> {
+        let mut result = [const { MaybeUninit::uninit() }; D];
+        self.values
+            .into_iter()
+            .zip(other.values)
+            .enumerate()
+            .for_each(|(i, (a, b))| {
+                result[i] = MaybeUninit::new(a + b);
+            });
+        unsafe {
+            Point {
+                values: std::mem::transmute_copy(&result),
+            }
         }
     }
 }
 
-impl<T> Sub for Point2D<T>
+impl<T, const D: usize> Sub for Point<T, D>
 where
     T: Sub,
 {
-    type Output = Point2D<T::Output>;
+    type Output = Point<T::Output, D>;
 
-    fn sub(self, other: Point2D<T>) -> Point2D<T::Output> {
-        Point2D {
-            x: self.x - other.x,
-            y: self.y - other.y,
+    fn sub(self, other: Point<T, D>) -> Point<T::Output, D> {
+        let mut result = [const { MaybeUninit::uninit() }; D];
+        self.values
+            .into_iter()
+            .zip(other.values)
+            .enumerate()
+            .for_each(|(i, (a, b))| {
+                result[i] = MaybeUninit::new(a - b);
+            });
+        unsafe {
+            Point {
+                values: std::mem::transmute_copy(&result),
+            }
         }
     }
 }
 
-impl<T> Point2D<T>
+impl<T, const D: usize> Point<T, D>
 where
     T: Mul + Copy,
 {
-    pub fn scale(self, other: T) -> Point2D<T::Output> {
-        Point2D {
-            x: self.x * other,
-            y: self.y * other,
+    pub fn scale(self, other: T) -> Point<T::Output, D> {
+        let mut result = [const { MaybeUninit::uninit() }; D];
+        self.values.into_iter().enumerate().for_each(|(i, v)| {
+            result[i] = MaybeUninit::new(v * other);
+        });
+        unsafe {
+            Point {
+                values: std::mem::transmute_copy(&result),
+            }
         }
     }
 }
 
-impl<T> Point2D<T> {
-    pub fn distance(self, other: Point2D<T>) -> f64
+impl<T, const D: usize> Point<T, D> {
+    pub fn distance(self, other: Point<T, D>) -> f64
     where
         T: Sub,
         T::Output: Into<f64>,
     {
-        let dx: f64 = (self.x - other.x).into();
-        let dy: f64 = (self.y - other.y).into();
-        (dx * dx + dy * dy).sqrt()
+        self.values
+            .into_iter()
+            .zip(other.values)
+            .map(|(a, b)| {
+                let dx: f64 = (a - b).into();
+                dx * dx
+            })
+            .sum::<f64>()
+            .sqrt()
     }
 
-    pub fn manhattan_distance(self, other: Point2D<T>) -> T::Output
+    pub fn manhattan_distance(self, other: Point<T, D>) -> T::Output
     where
         T: Sub,
-        T::Output: Signed,
+        T::Output: Signed + Sum,
     {
-        (self.x - other.x).abs() + (self.y - other.y).abs()
+        self.values
+            .into_iter()
+            .zip(other.values)
+            .map(|(a, b)| (a - b).abs())
+            .sum()
     }
 }
 
-impl<T> Display for Point2D<T>
+impl<T, const D: usize> Display for Point<T, D>
 where
     T: Display,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
+        write!(
+            f,
+            "({})",
+            self.values.iter().map(|v| v.to_string()).join(", ")
+        )
     }
 }
 
@@ -168,5 +241,21 @@ mod tests {
         let b = Point2D::new(4, 6);
         let result = a.manhattan_distance(b);
         assert_eq!(result, 7);
+    }
+
+    #[test]
+    fn display() {
+        let a = Point2D::new(1, 2);
+        assert_eq!(a.to_string(), "(1, 2)");
+    }
+
+    #[test]
+    fn math_3d() {
+        let a = Point3D::new(1, 2, 3);
+        let b = Point3D::new(4, 5, 6);
+        let result = a + b;
+        assert_eq!(result, Point3D::new(5, 7, 9));
+        assert_eq!(result.scale(3), Point3D::new(15, 21, 27));
+        assert_eq!(a.manhattan_distance(b), 9);
     }
 }
