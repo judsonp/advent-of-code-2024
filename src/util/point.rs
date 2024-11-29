@@ -3,7 +3,6 @@ use num::{Signed, Zero};
 use std::{
     fmt::{self, Display},
     iter::Sum,
-    mem::MaybeUninit,
     ops::{Add, Mul, Sub},
 };
 
@@ -85,18 +84,14 @@ where
     type Output = Point<T::Output, D>;
 
     fn add(self, other: Point<T, D>) -> Point<T::Output, D> {
-        let mut result = [const { MaybeUninit::uninit() }; D];
-        self.values
-            .into_iter()
-            .zip(other.values)
-            .enumerate()
-            .for_each(|(i, (a, b))| {
-                result[i] = MaybeUninit::new(a + b);
-            });
-        unsafe {
-            Point {
-                values: std::mem::transmute_copy(&result),
-            }
+        Point {
+            values: array_init::from_iter(
+                self.values
+                    .into_iter()
+                    .zip(other.values)
+                    .map(|(a, b)| a + b),
+            )
+            .unwrap(),
         }
     }
 }
@@ -108,18 +103,14 @@ where
     type Output = Point<T::Output, D>;
 
     fn sub(self, other: Point<T, D>) -> Point<T::Output, D> {
-        let mut result = [const { MaybeUninit::uninit() }; D];
-        self.values
-            .into_iter()
-            .zip(other.values)
-            .enumerate()
-            .for_each(|(i, (a, b))| {
-                result[i] = MaybeUninit::new(a - b);
-            });
-        unsafe {
-            Point {
-                values: std::mem::transmute_copy(&result),
-            }
+        Point {
+            values: array_init::from_iter(
+                self.values
+                    .into_iter()
+                    .zip(other.values)
+                    .map(|(a, b)| a - b),
+            )
+            .unwrap(),
         }
     }
 }
@@ -129,14 +120,8 @@ where
     T: Mul + Copy,
 {
     pub fn scale(self, other: T) -> Point<T::Output, D> {
-        let mut result = [const { MaybeUninit::uninit() }; D];
-        self.values.into_iter().enumerate().for_each(|(i, v)| {
-            result[i] = MaybeUninit::new(v * other);
-        });
-        unsafe {
-            Point {
-                values: std::mem::transmute_copy(&result),
-            }
+        Point {
+            values: array_init::map_array_init(&self.values, |v| *v * other),
         }
     }
 }
