@@ -3,10 +3,10 @@ use num::{Signed, Zero};
 use std::{
     fmt::{self, Display},
     iter::Sum,
-    ops::{Add, Mul, Sub},
+    ops::{Add, Div, Mul, Neg, Sub},
 };
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Point<T, const D: usize> {
     pub values: [T; D],
 }
@@ -57,16 +57,22 @@ impl<T> Point<T, 3> {
     }
 }
 
-impl<T, const D: usize> Point<T, D> {
-    pub fn zero() -> Self
-    where
-        T: Zero + Copy,
-    {
+impl<T, const D: usize> Zero for Point<T, D>
+where
+    T: Zero + Copy,
+{
+    fn zero() -> Self {
         Point {
             values: [T::zero(); D],
         }
     }
 
+    fn is_zero(&self) -> bool {
+        self.values.iter().all(|v| v.is_zero())
+    }
+}
+
+impl<T, const D: usize> Point<T, D> {
     pub fn convert<U>(self) -> Point<U, D>
     where
         U: From<T>,
@@ -119,9 +125,33 @@ impl<T, const D: usize> Point<T, D>
 where
     T: Mul + Copy,
 {
-    pub fn scale(self, other: T) -> Point<T::Output, D> {
+    pub fn multiply(self, other: T) -> Point<T::Output, D> {
         Point {
             values: array_init::map_array_init(&self.values, |v| *v * other),
+        }
+    }
+}
+
+impl<T, const D: usize> Point<T, D>
+where
+    T: Div + Copy,
+{
+    pub fn divide(self, other: T) -> Point<T::Output, D> {
+        Point {
+            values: array_init::map_array_init(&self.values, |v| *v / other),
+        }
+    }
+}
+
+impl<T, const D: usize> Neg for Point<T, D>
+where
+    T: Neg,
+{
+    type Output = Point<T::Output, D>;
+
+    fn neg(self) -> Point<T::Output, D> {
+        Point {
+            values: array_init::from_iter(self.values.into_iter().map(|v| -v)).unwrap(),
         }
     }
 }
@@ -206,10 +236,24 @@ mod tests {
     }
 
     #[test]
-    fn scale() {
+    fn mul() {
         let a = Point2D::new(1, 2);
-        let result = a.scale(3);
+        let result = a.multiply(3);
         assert_eq!(result, Point2D::new(3, 6));
+    }
+
+    #[test]
+    fn div() {
+        let a = Point2D::new(3, 6);
+        let result = a.divide(3);
+        assert_eq!(result, Point2D::new(1, 2));
+    }
+
+    #[test]
+    fn negate() {
+        let a = Point2D::new(1, 2);
+        let result = -a;
+        assert_eq!(result, Point2D::new(-1, -2));
     }
 
     #[test]
@@ -240,7 +284,7 @@ mod tests {
         let b = Point3D::new(4, 5, 6);
         let result = a + b;
         assert_eq!(result, Point3D::new(5, 7, 9));
-        assert_eq!(result.scale(3), Point3D::new(15, 21, 27));
+        assert_eq!(result.multiply(3), Point3D::new(15, 21, 27));
         assert_eq!(a.manhattan_distance(b), 9);
     }
 }
