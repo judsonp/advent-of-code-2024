@@ -11,6 +11,13 @@ pub enum Direction {
     South,
 }
 
+pub const DIRECTIONS: [Direction; 4] = [
+    Direction::East,
+    Direction::North,
+    Direction::West,
+    Direction::South,
+];
+
 impl<T> From<Direction> for Point2D<T>
 where
     T: One + Zero + Neg<Output = T>,
