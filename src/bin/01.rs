@@ -47,19 +47,34 @@ pub fn part_two(input: &str) -> Option<u64> {
     let (left, right) = parse_input(input);
 
     let mut sum: u64 = 0;
+    let mut lidx = 0;
     let mut ridx = 0;
 
-    for &lval in left.iter() {
-        while ridx < right.len() && right[ridx] < lval {
-            ridx += 1;
-        }
+    // Run through the sorted lists, finding when a number is in both lists.
+    while lidx < left.len() && ridx < right.len() {
+        match left[lidx].cmp(&right[ridx]) {
+            std::cmp::Ordering::Less => lidx += 1,
+            std::cmp::Ordering::Greater => ridx += 1,
+            std::cmp::Ordering::Equal => {
+                // Count how many times the number appears in each list.
+                let mut lcount = 0;
+                while lidx + lcount < left.len() && left[lidx + lcount] == right[ridx] {
+                    lcount += 1;
+                }
 
-        let mut rcount = 0;
-        while ridx + rcount < right.len() && right[ridx + rcount] == lval {
-            rcount += 1;
-        }
+                let mut rcount = 0;
+                while ridx + rcount < right.len() && right[ridx + rcount] == left[lidx] {
+                    rcount += 1;
+                }
 
-        sum += (lval as u64) * (rcount as u64);
+                // The contribution to the total is value * count_left * count_right.
+                sum += (left[lidx] as u64) * (lcount as u64) * (rcount as u64);
+
+                // Advance both lists.
+                lidx += lcount;
+                ridx += rcount;
+            }
+        }
     }
 
     Some(sum)
