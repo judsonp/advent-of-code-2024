@@ -1,11 +1,16 @@
-use counter::Counter;
+use std::sync::OnceLock;
+
 use itertools::Itertools;
 
 advent_of_code::solution!(1);
 
 const INPUT_SIZE: usize = 1000;
 
-pub fn part_one(input: &str) -> Option<u64> {
+// Use this OnceLock to cache the parsed and sorted input.
+#[allow(dead_code)]
+static COLUMNS: OnceLock<(Vec<u32>, Vec<u32>)> = OnceLock::new();
+
+fn parse_input(input: &str) -> (Vec<u32>, Vec<u32>) {
     let mut left = Vec::with_capacity(INPUT_SIZE);
     let mut right = Vec::with_capacity(INPUT_SIZE);
     // Each line is formatted as "<number> <number>".
@@ -13,7 +18,7 @@ pub fn part_one(input: &str) -> Option<u64> {
     input
         .lines()
         .map(|s| s.split_ascii_whitespace().next_tuple().unwrap())
-        .map(|(a, b)| (a.parse::<i64>().unwrap(), b.parse::<i64>().unwrap()))
+        .map(|(a, b)| (a.parse::<u32>().unwrap(), b.parse::<u32>().unwrap()))
         .for_each(|(a, b)| {
             left.push(a);
             right.push(b);
@@ -21,47 +26,47 @@ pub fn part_one(input: &str) -> Option<u64> {
     // Sort the columns.
     left.sort();
     right.sort();
+    (left, right)
+}
+
+pub fn part_one(input: &str) -> Option<u64> {
+    // let (left, right) = &COLUMNS.get_or_init(|| parse_input(input));
+    let (left, right) = parse_input(input);
+
     // The solution is the sum of pairwise absolute differnces in the sorted lists.
     let result = left
         .iter()
         .zip(right.iter())
         .map(|(a, b)| a.abs_diff(*b))
-        .sum();
-    Some(result)
+        .sum::<u32>();
+    Some(result as u64)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let mut left = Vec::with_capacity(INPUT_SIZE);
-    let mut right: Counter<i64, u64> = Counter::with_capacity(INPUT_SIZE);
-    // Parse the two columns, as in Part 1.
-    // For the right-hand column, track the number of times each value appears.
-    input
-        .lines()
-        .map(|s| s.split_ascii_whitespace().next_tuple().unwrap())
-        .map(|(a, b)| (a.parse::<i64>().unwrap(), b.parse::<i64>().unwrap()))
-        .for_each(|(a, b)| {
-            left.push(a);
-            right[&b] += 1;
-        });
-    // The solution is the sum of each element in the left-hand column
-    // multiplied by the number of times it appears in the right-hand column.
-    let result = left.iter().map(|v| (*v as u64) * right[v]).sum();
-    Some(result)
+    // let (left, right) = &COLUMNS.get_or_init(|| parse_input(input));
+    let (left, right) = parse_input(input);
 
-    // Note: it's possible to do this in a single pass.
-    // The nominal result is the sum of each element in the left-hand column mulitplied
-    // by the number of times it appears in the right-hand column.
-    // This is symmetric, so the result is the sum of value * left_count * right_count.
-    // If you keep track of the number of elements on both sides, you can do this iteratively.
-    // When you add a value to the left-hand column, increase the sum by
-    //     (value * (left_count + 1) * right_count) - (value * left_count * right_count)
-    //   which is just
-    //      value * right_count
-    // Similarly, when you add a value to the right-hand column, increase the sum by
-    //    (value * left_count * (right_count + 1)) - (value * left_count * right_count)
-    //  which is just
-    //    value * left_count
-    // A naive implementation of this turned out to be slower than the two-pass version.
+    let mut sum: u64 = 0;
+    let mut ridx = 0;
+
+    for &lval in left.iter() {
+        while ridx < right.len() && right[ridx] < lval {
+            ridx += 1;
+        }
+
+        let mut rcount = 0;
+        while ridx + rcount < right.len() && right[ridx + rcount] == lval {
+            rcount += 1;
+        }
+
+        sum += (lval as u64) * (rcount as u64);
+    }
+
+    Some(sum)
+
+    // A more natural approach would be to use a counter on the right-hand column
+    // for how often we've seen each number, but just sorting the two columns is
+    // faster. We can use the approach above to get counts from sorted lists.
 }
 
 #[cfg(test)]
