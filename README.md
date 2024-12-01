@@ -11,9 +11,9 @@ Based on the glorious [template](https://github.com/fspoettel/advent-of-code-rus
 <!--- benchmarking table --->
 ## Benchmarks
 
-|           Day            |  Part 1  |  Part 2  |
-| :----------------------: | :------: | :------: |
-| [Day 1](./src/bin/01.rs) | `36.8µs` | `50.7µs` |
+| Day | Part 1 | Part 2 |
+| :---: | :---: | :---:  |
+| [Day 1](./src/bin/01.rs) | `35.3µs` | `39.4µs` |
 
-**Total: 0.09ms**
+**Total: 0.07ms**
 <!--- benchmarking table --->

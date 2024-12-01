@@ -4,12 +4,16 @@ use itertools::Itertools;
 advent_of_code::solution!(1);
 
 pub fn part_one(input: &str) -> Option<u64> {
-    let input: (Vec<_>, Vec<_>) = input
+    let mut left = Vec::with_capacity(1000);
+    let mut right = Vec::with_capacity(1000);
+    input
         .lines()
         .map(|s| s.split_ascii_whitespace().next_tuple().unwrap())
         .map(|(a, b)| (a.parse::<i64>().unwrap(), b.parse::<i64>().unwrap()))
-        .unzip();
-    let (mut left, mut right) = input;
+        .for_each(|(a, b)| {
+            left.push(a);
+            right.push(b);
+        });
     left.sort();
     right.sort();
     let result = left
@@ -21,13 +25,17 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let input: (Vec<_>, Counter<_>) = input
+    let mut left = Vec::with_capacity(1000);
+    let mut right: Counter<i64, u64> = Counter::with_capacity(1000);
+    input
         .lines()
         .map(|s| s.split_ascii_whitespace().next_tuple().unwrap())
         .map(|(a, b)| (a.parse::<i64>().unwrap(), b.parse::<i64>().unwrap()))
-        .unzip();
-    let (left, right) = input;
-    let result = left.iter().map(|v| (*v as u64) * (right[v] as u64)).sum();
+        .for_each(|(a, b)| {
+            left.push(a);
+            right[&b] += 1;
+        });
+    let result = left.iter().map(|v| (*v as u64) * right[v]).sum();
     Some(result)
 }
 
