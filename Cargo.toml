@@ -10,9 +10,16 @@ publish = false
 [lib]
 doctest = false
 
+[profile.release]
+lto = true
+
 [profile.dhat]
 inherits = "release"
 debug = 1
+
+[profile.profiling]
+inherits = "release"
+debug = true
 
 [features]
 dhat-heap = ["dhat"]
