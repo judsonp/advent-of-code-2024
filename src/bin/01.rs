@@ -47,6 +47,21 @@ pub fn part_two(input: &str) -> Option<u64> {
     // multiplied by the number of times it appears in the right-hand column.
     let result = left.iter().map(|v| (*v as u64) * right[v]).sum();
     Some(result)
+
+    // Note: it's possible to do this in a single pass.
+    // The nominal result is the sum of each element in the left-hand column mulitplied
+    // by the number of times it appears in the right-hand column.
+    // This is symmetric, so the result is the sum of value * left_count * right_count.
+    // If you keep track of the number of elements on both sides, you can do this iteratively.
+    // When you add a value to the left-hand column, increase the sum by
+    //     (value * (left_count + 1) * right_count) - (value * left_count * right_count)
+    //   which is just
+    //      value * right_count
+    // Similarly, when you add a value to the right-hand column, increase the sum by
+    //    (value * left_count * (right_count + 1)) - (value * left_count * right_count)
+    //  which is just
+    //    value * left_count
+    // A naive implementation of this turned out to be slower than the two-pass version.
 }
 
 #[cfg(test)]
