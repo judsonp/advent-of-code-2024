@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 advent_of_code::solution!(2);
 
-fn report_is_safe(report: impl Iterator<Item = u32>) -> bool {
+fn report_safe(report: impl Iterator<Item = u32>) -> bool {
     let mut direction = None;
 
     for (a, b) in report.tuple_windows() {
@@ -24,17 +24,13 @@ fn report_is_safe(report: impl Iterator<Item = u32>) -> bool {
     true
 }
 
-fn report_safe(report: &[u32]) -> bool {
-    report_is_safe(report.iter().copied())
-}
-
 fn report_safe_omitting_one(report: &[u32]) -> bool {
-    if report_is_safe(report.iter().copied()) {
+    if report_safe(report.iter().copied()) {
         return true;
     }
 
     for i in 0..report.len() {
-        if report_is_safe(report.iter().copied().enumerate().filter_map(|(j, v)| {
+        if report_safe(report.iter().copied().enumerate().filter_map(|(j, v)| {
             if i == j {
                 None
             } else {
@@ -49,34 +45,21 @@ fn report_safe_omitting_one(report: &[u32]) -> bool {
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
-    let reports: Vec<Vec<_>> = input
+    let reports = input
         .lines()
-        .map(|line| {
-            line.split_whitespace()
-                .map(|v| v.parse().unwrap())
-                .collect()
-        })
-        .collect();
+        .map(|line| line.split_whitespace().map(|v| v.parse().unwrap()));
 
-    Some(reports.iter().filter(|r| report_safe(r)).count() as u64)
+    Some(reports.filter(|r| report_safe(r.clone())).count() as u64)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let reports: Vec<Vec<_>> = input
-        .lines()
-        .map(|line| {
-            line.split_whitespace()
-                .map(|v| v.parse().unwrap())
-                .collect()
-        })
-        .collect();
+    let reports = input.lines().map(|line| {
+        line.split_whitespace()
+            .map(|v| v.parse().unwrap())
+            .collect::<Vec<_>>()
+    });
 
-    Some(
-        reports
-            .iter()
-            .filter(|r| report_safe_omitting_one(r))
-            .count() as u64,
-    )
+    Some(reports.filter(|r| report_safe_omitting_one(r)).count() as u64)
 }
 
 #[cfg(test)]
