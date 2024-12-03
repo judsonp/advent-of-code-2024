@@ -59,9 +59,11 @@ pub fn part_two(input: &str) -> Option<u64> {
     let mut data = Vec::with_capacity(PREALLOCATE_SIZE);
 
     for line in input.lines() {
-        line.split_whitespace().map(|v| v.parse().unwrap()).for_each(|v| {
-            data.push(v);
-        });
+        line.split_whitespace()
+            .map(|v| v.parse().unwrap())
+            .for_each(|v| {
+                data.push(v);
+            });
         if report_safe_omitting_one(&data) {
             count += 1;
         }
