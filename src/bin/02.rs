@@ -4,6 +4,8 @@ use itertools::Itertools;
 
 advent_of_code::solution!(2);
 
+const PREALLOCATE_SIZE: usize = 8;
+
 fn report_safe(report: impl Iterator<Item = u32>) -> bool {
     let mut direction = None;
 
@@ -53,13 +55,20 @@ pub fn part_one(input: &str) -> Option<u64> {
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let reports = input.lines().map(|line| {
-        line.split_whitespace()
-            .map(|v| v.parse().unwrap())
-            .collect::<Vec<_>>()
-    });
+    let mut count = 0;
+    let mut data = Vec::with_capacity(PREALLOCATE_SIZE);
 
-    Some(reports.filter(|r| report_safe_omitting_one(r)).count() as u64)
+    for line in input.lines() {
+        line.split_whitespace().map(|v| v.parse().unwrap()).for_each(|v| {
+            data.push(v);
+        });
+        if report_safe_omitting_one(&data) {
+            count += 1;
+        }
+        data.clear();
+    }
+
+    Some(count)
 }
 
 #[cfg(test)]
