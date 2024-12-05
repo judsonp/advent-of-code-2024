@@ -41,13 +41,22 @@ pub fn part_one(input: &str) -> Option<u64> {
 
     let result: usize = grid
         .indexed_iter()
+        .filter(|(_, &value)| value == 'X')
         .map(|(index, _)| {
-            DIRECTIONS.iter().count_if(|stride| {
-                equal(
-                    grid.stride_iter(index, *stride).take(4).copied(),
-                    "XMAS".chars(),
-                )
-            })
+            DIRECTIONS
+                .iter()
+                .filter(|&&stride| {
+                    (stride.0 >= 0 || index.0 >= stride.0.unsigned_abs())
+                        && (stride.1 >= 0 || index.1 >= stride.1.unsigned_abs())
+                        && (stride.0 <= 0 || index.0 + (stride.0 as usize) < grid.cols())
+                        && (stride.1 <= 0 || index.1 + (stride.1 as usize) < grid.rows())
+                })
+                .count_if(|stride| {
+                    equal(
+                        grid.stride_iter(index, *stride).take(4).copied(),
+                        "XMAS".chars(),
+                    )
+                })
         })
         .sum();
 
