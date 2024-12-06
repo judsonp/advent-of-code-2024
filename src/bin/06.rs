@@ -1,6 +1,11 @@
-use advent_of_code::util::{direction::Direction, iter::CountIf, point::Point2D};
+use advent_of_code::util::{
+    direction::Direction,
+    iter::{CountIf, CountIfParallel},
+    point::Point2D,
+};
 use enumset::EnumSet;
 use grid::Grid;
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
 advent_of_code::solution!(6);
 
@@ -175,16 +180,16 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     let visited = find_visited(&input);
 
-    let blocking_locations =
-        visited
-            .indexed_iter()
-            .filter(|(_, &v)| v)
-            .count_if(|(location, _)| {
-                block_makes_cycle(
-                    &input,
-                    Point2D::new(location.1 as isize, location.0 as isize),
-                )
-            });
+    let blocking_locations = visited
+        .indexed_iter()
+        .par_bridge()
+        .filter(|(_, &v)| v)
+        .count_if(|(location, _)| {
+            block_makes_cycle(
+                &input,
+                Point2D::new(location.1 as isize, location.0 as isize),
+            )
+        });
 
     Some(blocking_locations as u64)
 }

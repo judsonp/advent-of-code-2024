@@ -18,7 +18,7 @@ Based on the glorious [template](https://github.com/fspoettel/advent-of-code-rus
 | [Day 3](./src/bin/03.rs) | `164.8µs` | `221.3µs` |
 | [Day 4](./src/bin/04.rs) | `307.9µs` | `73.4µs` |
 | [Day 5](./src/bin/05.rs) | `107.4µs` | `140.6µs` |
-| [Day 6](./src/bin/06.rs) | `27.4µs` | `35.7ms` |
+| [Day 6](./src/bin/06.rs) | `27.8µs` | `9.1ms` |
 
-**Total: 36.89ms**
+**Total: 10.29ms**
 <!--- benchmarking table --->
