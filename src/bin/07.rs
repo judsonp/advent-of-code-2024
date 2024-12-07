@@ -1,6 +1,7 @@
 use std::{fmt::Display, str::FromStr};
 
 use num::PrimInt;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 advent_of_code::solution!(7);
 
@@ -101,7 +102,7 @@ fn could_be_true(equation: &Equation, ops: &[Operation]) -> bool {
         let mut result = Some(equation.values[0]);
         for (op, value) in operations.iter().zip(equation.values.iter().skip(1)) {
             result = op.apply(result.unwrap(), *value);
-            if result.is_none() {
+            if result.is_none() || result.unwrap() > equation.result {
                 break;
             }
         }
@@ -138,7 +139,7 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     Some(
         equations
-            .iter()
+            .par_iter()
             .filter_map(|equation| {
                 if could_be_true(equation, &ops) {
                     Some(equation.result)
