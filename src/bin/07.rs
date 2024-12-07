@@ -1,5 +1,3 @@
-use std::{fmt::Display, str::FromStr};
-
 use num::PrimInt;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
@@ -15,14 +13,26 @@ enum Operation {
 impl Operation {
     fn apply<T>(self, lhs: T, rhs: T) -> Option<T>
     where
-        T: PrimInt + Display + FromStr,
+        T: PrimInt,
     {
         match self {
             Operation::Add => lhs.checked_add(&rhs),
             Operation::Mul => lhs.checked_mul(&rhs),
-            Operation::Concat => format!("{}{}", lhs, rhs).parse().ok(),
+            Operation::Concat => lhs.checked_mul(&digit_shift(rhs)?)?.checked_add(&rhs),
         }
     }
+}
+
+fn digit_shift<T>(mut n: T) -> Option<T>
+where
+    T: PrimInt,
+{
+    let mut d = T::one();
+    while n >= T::from(10).unwrap() {
+        d = d * T::from(10).unwrap();
+        n = n / T::from(10).unwrap();
+    }
+    d.checked_mul(&T::from(10).unwrap())
 }
 
 #[derive(Debug, Clone)]
@@ -154,6 +164,28 @@ pub fn part_two(input: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_digit_shift() {
+        assert_eq!(digit_shift(1000), Some(10000));
+        assert_eq!(digit_shift(999), Some(1000));
+        assert_eq!(digit_shift(123), Some(1000));
+        assert_eq!(digit_shift(100), Some(1000));
+        assert_eq!(digit_shift(99), Some(100));
+        assert_eq!(digit_shift(1), Some(10));
+        assert_eq!(digit_shift(0), Some(10));
+    }
+
+    #[test]
+    fn test_concat() {
+        assert_eq!(Operation::Concat.apply(1, 2), Some(12));
+        assert_eq!(Operation::Concat.apply(12, 3), Some(123));
+        assert_eq!(Operation::Concat.apply(123, 4), Some(1234));
+        assert_eq!(Operation::Concat.apply(1234, 5), Some(12345));
+        assert_eq!(Operation::Concat.apply(1, 23), Some(123));
+        assert_eq!(Operation::Concat.apply(1, 234), Some(1234));
+        assert_eq!(Operation::Concat.apply(1, 2345), Some(12345));
+    }
 
     #[test]
     fn test_part_one() {
