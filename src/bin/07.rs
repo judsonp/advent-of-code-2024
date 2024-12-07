@@ -35,55 +35,6 @@ where
     d.checked_mul(&T::from(10).unwrap())
 }
 
-#[derive(Debug, Clone)]
-struct PermutationIterator<'a, T> {
-    items: &'a [T],
-    current: Vec<usize>,
-    done: bool,
-}
-
-impl<'a, T> PermutationIterator<'a, T> {
-    fn new(items: &'a [T], size: usize) -> PermutationIterator<'a, T> {
-        let current = vec![0; size];
-        PermutationIterator {
-            items,
-            current,
-            done: false,
-        }
-    }
-}
-
-impl<T> Iterator for PermutationIterator<'_, T>
-where
-    T: Copy,
-{
-    type Item = Vec<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.done {
-            return None;
-        }
-
-        let result = self.current.iter().map(|&i| self.items[i]).collect();
-        let mut i = 0;
-        while i < self.current.len() {
-            self.current[i] += 1;
-            if self.current[i] == self.items.len() {
-                self.current[i] = 0;
-                i += 1;
-            } else {
-                break;
-            }
-        }
-
-        if i == self.current.len() {
-            self.done = true;
-        }
-
-        Some(result)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Equation {
     result: u64,
@@ -105,24 +56,32 @@ fn parse_input(input: &str) -> Vec<Equation> {
         .collect()
 }
 
-fn could_be_true(equation: &Equation, ops: &[Operation]) -> bool {
-    let operation_permutations = PermutationIterator::new(ops, equation.values.len() - 1);
+fn could_be_true_partial(result: u64, lhs: u64, rhs: &[u64], ops: &[Operation]) -> bool {
+    if rhs.is_empty() {
+        return lhs == result;
+    }
 
-    for operations in operation_permutations {
-        let mut result = Some(equation.values[0]);
-        for (op, value) in operations.iter().zip(equation.values.iter().skip(1)) {
-            result = op.apply(result.unwrap(), *value);
-            if result.is_none() || result.unwrap() > equation.result {
-                break;
-            }
+    for op in ops.iter() {
+        let new_lhs = op.apply(lhs, rhs[0]);
+        if new_lhs.is_none() {
+            continue;
         }
 
-        if result == Some(equation.result) {
+        if could_be_true_partial(result, new_lhs.unwrap(), &rhs[1..], ops) {
             return true;
         }
     }
 
     false
+}
+
+fn could_be_true(equation: &Equation, ops: &[Operation]) -> bool {
+    could_be_true_partial(
+        equation.result,
+        equation.values[0],
+        &equation.values[1..],
+        ops,
+    )
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
