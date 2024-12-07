@@ -1,5 +1,4 @@
-use num::PrimInt;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use num::{Integer, PrimInt};
 
 advent_of_code::solution!(7);
 
@@ -19,6 +18,37 @@ impl Operation {
             Operation::Add => lhs.checked_add(&rhs),
             Operation::Mul => lhs.checked_mul(&rhs),
             Operation::Concat => lhs.checked_mul(&digit_shift(rhs)?)?.checked_add(&rhs),
+        }
+    }
+
+    fn unapply<T>(self, result: T, rhs: T) -> Option<T>
+    where
+        T: PrimInt + Integer,
+    {
+        match self {
+            Operation::Add => result.checked_sub(&rhs),
+            Operation::Mul => {
+                if rhs == T::zero() || result == T::zero() {
+                    return None;
+                }
+                let (div, rem) = result.div_rem(&rhs);
+                if rem == T::zero() {
+                    Some(div)
+                } else {
+                    None
+                }
+            }
+            Operation::Concat => {
+                if result == T::zero() {
+                    return None;
+                }
+                let (div, rem) = result.div_rem(&digit_shift(rhs)?);
+                if rem == rhs {
+                    Some(div)
+                } else {
+                    None
+                }
+            }
         }
     }
 }
@@ -56,6 +86,34 @@ fn parse_input(input: &str) -> Vec<Equation> {
         .collect()
 }
 
+fn could_be_true_partial_reverse(result: u64, values: &[u64], ops: &[Operation]) -> bool {
+    if values.len() == 1 {
+        return values[0] == result;
+    }
+
+    if values.is_empty() {
+        panic!();
+    }
+
+    for op in ops.iter() {
+        let new_result = op.unapply(result, values[values.len() - 1]);
+        if new_result.is_none() {
+            continue;
+        }
+
+        if could_be_true_partial_reverse(new_result.unwrap(), &values[..values.len() - 1], ops) {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn could_be_true_reverse(equation: &Equation, ops: &[Operation]) -> bool {
+    could_be_true_partial_reverse(equation.result, &equation.values, ops)
+}
+
+#[allow(dead_code)]
 fn could_be_true_partial(result: u64, lhs: u64, rhs: &[u64], ops: &[Operation]) -> bool {
     if rhs.is_empty() {
         return lhs == result;
@@ -75,6 +133,7 @@ fn could_be_true_partial(result: u64, lhs: u64, rhs: &[u64], ops: &[Operation]) 
     false
 }
 
+#[allow(dead_code)]
 fn could_be_true(equation: &Equation, ops: &[Operation]) -> bool {
     could_be_true_partial(
         equation.result,
@@ -92,7 +151,7 @@ pub fn part_one(input: &str) -> Option<u64> {
         equations
             .iter()
             .filter_map(|equation| {
-                if could_be_true(equation, &ops) {
+                if could_be_true_reverse(equation, &ops) {
                     Some(equation.result)
                 } else {
                     None
@@ -108,9 +167,9 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     Some(
         equations
-            .par_iter()
+            .iter()
             .filter_map(|equation| {
-                if could_be_true(equation, &ops) {
+                if could_be_true_reverse(equation, &ops) {
                     Some(equation.result)
                 } else {
                     None
