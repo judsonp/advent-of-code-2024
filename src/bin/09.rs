@@ -20,7 +20,7 @@ pub fn part_two(input: &str) -> Option<u64> {
 pub type DiskMap = Vec<DiskBlock>;
 pub type DiskBlock = Option<u32>;
 
-pub fn parse_input(input: &str) -> DiskMap {
+fn parse_input(input: &str) -> DiskMap {
     let file_ids = successors(Some(0), |id| Some(id + 1)).map(Some);
     let ids = Itertools::intersperse(file_ids, None);
     let sizes = input
@@ -43,7 +43,7 @@ fn pop_until<T>(vec: &mut Vec<T>, pred: impl Fn(&T) -> bool) -> Option<T> {
     None
 }
 
-pub fn compact(disk_map: &mut DiskMap) {
+fn compact(disk_map: &mut DiskMap) {
     let mut idx = 0;
 
     while idx < disk_map.len() {
@@ -105,7 +105,7 @@ fn find_empty_space(disk_map: &DiskMap, file_block: usize, file_size: usize) -> 
     None
 }
 
-pub fn nonfragmenting_compact(disk_map: &mut DiskMap) {
+fn nonfragmenting_compact(disk_map: &mut DiskMap) {
     let mut file_idx = disk_map.len() - 1;
 
     while let Some((new_idx, start_block, size, file_id)) =
@@ -127,7 +127,7 @@ pub fn nonfragmenting_compact(disk_map: &mut DiskMap) {
     }
 }
 
-pub fn disk_checksum(disk_map: &DiskMap) -> u64 {
+fn disk_checksum(disk_map: &DiskMap) -> u64 {
     disk_map
         .iter()
         .enumerate()
