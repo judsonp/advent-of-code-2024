@@ -7,14 +7,19 @@ pub fn part_one(input: &str) -> Option<u64> {
     let input = parse_input(input);
 
     let mut cost = 0;
-    for RegionMetrics {
-        plots,
-        perimeter,
-        corners: _,
-    } in connected_regions(&input)
-    {
-        cost += plots * perimeter;
-    }
+
+    visit_connected_regions(
+        &input,
+        FenceMetrics::default(),
+        |state, grid, row, col| {
+            state.plots += 1;
+            state.perimeter +=
+                4 - neighbors(row, col, grid).count_if(|(r, c)| grid[(r, c)] == grid[(row, col)]);
+        },
+        |state| {
+            cost += state.plots * state.perimeter;
+        },
+    );
 
     Some(cost as u64)
 }
@@ -23,41 +28,55 @@ pub fn part_two(input: &str) -> Option<u64> {
     let input = parse_input(input);
 
     let mut cost = 0;
-    for RegionMetrics {
-        plots,
-        perimeter: _,
-        corners,
-    } in connected_regions(&input)
-    {
-        cost += plots * corners;
-    }
+
+    visit_connected_regions(
+        &input,
+        BulkFenceMetrics::default(),
+        |state, grid, row, col| {
+            state.plots += 1;
+            state.corners += count_corners(row, col, grid);
+        },
+        |state| {
+            cost += state.plots * state.corners;
+        },
+    );
 
     Some(cost as u64)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct RegionMetrics {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct FenceMetrics {
     plots: usize,
     perimeter: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct BulkFenceMetrics {
+    plots: usize,
     corners: usize,
 }
 
-fn connected_regions<T>(grid: &Grid<T>) -> Vec<RegionMetrics>
-where
+fn visit_connected_regions<T, S, R, D>(
+    grid: &Grid<T>,
+    discovery_visitor_initial_state: S,
+    discovery_visitor: D,
+    mut region_visitor: R,
+) where
     T: Clone + PartialEq,
+    S: Clone,
+    R: FnMut(S),
+    D: Fn(&mut S, &Grid<T>, usize, usize),
 {
     let mut visited = Grid::new(grid.rows(), grid.cols());
-    let mut regions = Vec::new();
 
     let mut region_seeds = vec![(0, 0)];
+
     while let Some((row, col)) = region_seeds.pop() {
         if visited[(row, col)] {
             continue;
         }
 
-        let mut plots = 0;
-        let mut perimeter = 0;
-        let mut corners = 0;
+        let mut state = discovery_visitor_initial_state.clone();
 
         let identity = grid[(row, col)].clone();
         let mut visit = vec![(row, col)];
@@ -67,9 +86,7 @@ where
             }
 
             visited[(row, col)] = true;
-            plots += 1;
-            perimeter += 4 - neighbors(row, col, grid).count_if(|(r, c)| grid[(r, c)] == identity);
-            corners += count_corners(row, col, grid);
+            discovery_visitor(&mut state, grid, row, col);
 
             for (r, c) in neighbors(row, col, grid) {
                 if grid[(r, c)] == identity {
@@ -80,14 +97,8 @@ where
             }
         }
 
-        regions.push(RegionMetrics {
-            plots,
-            perimeter,
-            corners,
-        });
+        region_visitor(state);
     }
-
-    regions
 }
 
 fn count_corners<T>(row: usize, col: usize, grid: &Grid<T>) -> usize
@@ -176,6 +187,19 @@ where
         })
 }
 
+fn neighbors<T>(row: usize, col: usize, grid: &Grid<T>) -> impl Iterator<Item = (usize, usize)> {
+    let rows = grid.rows() as isize;
+    let cols = grid.cols() as isize;
+
+    let row = row as isize;
+    let col = col as isize;
+
+    DIRECTIONS.iter().filter_map(move |&dir| {
+        let dir_pt: Point2D<isize> = dir.into();
+        constrain(row + dir_pt.y(), col + dir_pt.x(), rows, cols)
+    })
+}
+
 fn parse_input(input: &str) -> Grid<char> {
     let rows = input.lines().count();
     let cols = input.lines().next().unwrap().trim().len();
@@ -188,19 +212,6 @@ fn parse_input(input: &str) -> Grid<char> {
         });
 
     grid
-}
-
-fn neighbors<T>(row: usize, col: usize, grid: &Grid<T>) -> impl Iterator<Item = (usize, usize)> {
-    let rows = grid.rows() as isize;
-    let cols = grid.cols() as isize;
-
-    let row = row as isize;
-    let col = col as isize;
-
-    DIRECTIONS.iter().filter_map(move |&dir| {
-        let dir_pt: Point2D<isize> = dir.into();
-        constrain(row + dir_pt.y(), col + dir_pt.x(), rows, cols)
-    })
 }
 
 #[cfg(test)]
