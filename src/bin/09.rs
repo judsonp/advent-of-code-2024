@@ -86,14 +86,32 @@ fn find_next_file_reverse(
     Some((Some(idx), idx + 1, size, id))
 }
 
-fn find_empty_space(disk_map: &DiskMap, file_block: usize, file_size: usize) -> Option<usize> {
-    let mut idx = 0;
+// There are no regions of contiguous free space of at least N
+// blocks before index index[N].
+type EmptySpaceSearchCache = [usize; 10];
+
+fn update_cache(cache: &mut EmptySpaceSearchCache, size: usize, index: usize) {
+    for item in cache.iter_mut().take(10).skip(size) {
+        if index > *item {
+            *item = index;
+        }
+    }
+}
+
+fn find_empty_space(
+    disk_map: &DiskMap,
+    cache: &mut EmptySpaceSearchCache,
+    file_block: usize,
+    file_size: usize,
+) -> Option<usize> {
+    let mut idx = cache[file_size];
     let mut size = 0;
 
     while idx < file_block {
         if disk_map[idx].is_none() {
             size += 1;
             if size == file_size {
+                update_cache(cache, file_size, idx + 1);
                 return Some(idx - file_size + 1);
             }
         } else {
@@ -107,11 +125,12 @@ fn find_empty_space(disk_map: &DiskMap, file_block: usize, file_size: usize) -> 
 
 fn nonfragmenting_compact(disk_map: &mut DiskMap) {
     let mut file_idx = disk_map.len() - 1;
+    let mut cache = EmptySpaceSearchCache::default();
 
     while let Some((new_idx, start_block, size, file_id)) =
         find_next_file_reverse(disk_map, file_idx)
     {
-        if let Some(free_start_block) = find_empty_space(disk_map, start_block, size) {
+        if let Some(free_start_block) = find_empty_space(disk_map, &mut cache, start_block, size) {
             for item in disk_map.iter_mut().skip(free_start_block).take(size) {
                 *item = Some(file_id);
             }
