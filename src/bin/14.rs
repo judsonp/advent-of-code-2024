@@ -83,14 +83,18 @@ fn safety_factor(robots: &[Robot], space: &BoundingBox2D<i64>) -> u64 {
         ),
     ];
 
-    quadrants
-        .iter()
-        .map(|quadrant| {
-            robots
-                .iter()
-                .count_if(|robot| quadrant.contains(&robot.position)) as u64
-        })
-        .product()
+    let mut quadrant_scores = [0; 4];
+
+    for robot in robots {
+        for (i, quadrant) in quadrants.iter().enumerate() {
+            if quadrant.contains(&robot.position) {
+                quadrant_scores[i] += 1;
+                continue;
+            }
+        }
+    }
+
+    quadrant_scores.iter().product()
 }
 
 fn parse_input(input: &str) -> IResult<&str, Input> {
