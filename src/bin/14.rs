@@ -1,4 +1,4 @@
-use advent_of_code::util::{bbox::BoundingBox2D, iter::CountIf, point::Point2D};
+use advent_of_code::util::{bbox::BoundingBox2D, point::Point2D};
 use nom::{
     bytes::complete::tag,
     character::complete::i64 as parse_i64,
@@ -8,6 +8,7 @@ use nom::{
     sequence::{terminated, tuple},
     IResult,
 };
+use rayon::iter::{ParallelBridge, ParallelIterator as _};
 
 advent_of_code::solution!(14);
 
@@ -21,25 +22,21 @@ pub fn part_one(input: &str) -> Option<u64> {
 pub fn part_one_constrained(input: &str, space: BoundingBox2D<i64>) -> Option<u64> {
     let (_, mut robots) = parse_input(input).unwrap();
     advance_time(&mut robots, &space, 100);
-    Some(safety_factor(&robots, &space))
+    Some(safety_factor(robots.into_iter(), &space))
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let (_, mut robots) = parse_input(input).unwrap();
+    let (_, robots) = parse_input(input).unwrap();
     let space = BoundingBox2D::new(Point2D::new(0, 0), Point2D::new(100, 102));
 
-    let mut min_safety = safety_factor(&robots, &space);
-    let mut min_time = 0;
-    for time in 1..=10000 {
-        advance_time(&mut robots, &space, 1);
-        let safety = safety_factor(&robots, &space);
-        if safety < min_safety {
-            min_safety = safety;
-            min_time = time;
-        }
-    }
+    let safeties = (0..=10000).par_bridge().map(|time| {
+        let robots = advance_time_iter(robots.iter(), &space, time);
+        (time, safety_factor(robots, &space))
+    });
 
-    Some(min_time)
+    let (time, _) = safeties.min_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
+
+    Some(time)
 }
 
 #[allow(dead_code)]
@@ -63,7 +60,21 @@ fn advance_time(robots: &mut [Robot], space: &BoundingBox2D<i64>, time: u64) {
     }
 }
 
-fn safety_factor(robots: &[Robot], space: &BoundingBox2D<i64>) -> u64 {
+fn advance_time_iter<'a>(
+    robots: impl Iterator<Item = &'a Robot> + 'a,
+    space: &'a BoundingBox2D<i64>,
+    time: u64,
+) -> impl Iterator<Item = Robot> + 'a {
+    let wrap = BoundingBox2D::new(Point2D::new(0, 0), *space.upper() + Point2D::new(1, 1));
+    robots.map(move |robot| Robot {
+        position: robot
+            .position
+            .wrapped_add(&robot.velocity.multiply(time as i64), &wrap),
+        velocity: robot.velocity,
+    })
+}
+
+fn safety_factor(robots: impl Iterator<Item = Robot>, space: &BoundingBox2D<i64>) -> u64 {
     assert!(space.lower().x() == 0 && space.lower().y() == 0);
 
     let midpoint = Point2D::new(space.upper().x() / 2, space.upper().y() / 2);
