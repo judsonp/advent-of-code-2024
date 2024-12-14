@@ -1,4 +1,7 @@
-use std::ops::{Mul, Sub};
+use std::{
+    fmt::{self, Display, Formatter},
+    ops::{Mul, Sub},
+};
 
 use num::{one, Num};
 
@@ -111,6 +114,19 @@ where
             area = area * (self.upper.values[i] - self.lower.values[i]);
         }
         area
+    }
+}
+
+impl Display for BoundingBox2D<i64> {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(
+            f,
+            "({}, {}) -> ({}, {})",
+            self.lower().x(),
+            self.lower().y(),
+            self.upper().x(),
+            self.upper().y()
+        )
     }
 }
 
