@@ -44,3 +44,14 @@ impl Direction {
         }
     }
 }
+
+impl Direction {
+    pub fn rotate_left(self) -> Self {
+        match self {
+            Direction::East => Direction::North,
+            Direction::North => Direction::West,
+            Direction::West => Direction::South,
+            Direction::South => Direction::East,
+        }
+    }
+}
