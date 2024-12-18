@@ -39,6 +39,10 @@ pub fn part_one(input: &str) -> Option<u64> {
 pub fn part_two(input: &str) -> Option<u64> {
     let input = parse_input(input);
     let (graph, nodes) = build_graph(&input);
+    let reverse_nodes = nodes
+        .iter()
+        .map(|(node, &index)| (index, node))
+        .collect::<HashMap<_, _>>();
 
     let start = nodes[&Node {
         location: input.start,
@@ -56,14 +60,7 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     let locations_in_shortest_path = nodes_in_shortest_path
         .iter()
-        .map(|&node| {
-            nodes
-                .iter()
-                .find(|(_, &index)| index == node)
-                .unwrap()
-                .0
-                .location
-        })
+        .map(|&node| reverse_nodes[&node].location)
         .collect::<HashSet<_>>();
 
     Some(locations_in_shortest_path.len() as u64)
