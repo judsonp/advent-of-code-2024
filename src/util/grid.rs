@@ -1,5 +1,7 @@
 use grid::Grid;
 
+use super::point::Point2D;
+
 pub type Index = (usize, usize);
 pub type Offset = (isize, isize);
 
@@ -64,5 +66,43 @@ pub trait IntoGridStrideIterator<'a, T> {
 impl<'a, T> IntoGridStrideIterator<'a, T> for &'a Grid<T> {
     fn stride_iter(self, start: Index, stride: Offset) -> GridStrideIterator<'a, T> {
         GridStrideIterator::new(self, start, stride)
+    }
+}
+
+pub trait GridGetPoint<T, P, I>
+where
+    P: Into<Point2D<I>>,
+    I: TryInto<usize> + Copy,
+{
+    fn point(&self, loc: P) -> Option<&T>;
+}
+
+impl<T, P, I> GridGetPoint<T, P, I> for Grid<T>
+where
+    P: Into<Point2D<I>>,
+    I: TryInto<usize> + Copy,
+{
+    fn point(&self, loc: P) -> Option<&T> {
+        let point: Point2D<I> = loc.into();
+        self.get(point.y(), point.x())
+    }
+}
+
+pub trait GridGetPointMut<T, P, I>
+where
+    P: Into<Point2D<I>>,
+    I: TryInto<usize> + Copy,
+{
+    fn point_mut(&mut self, loc: P) -> Option<&mut T>;
+}
+
+impl<T, P, I> GridGetPointMut<T, P, I> for Grid<T>
+where
+    P: Into<Point2D<I>>,
+    I: TryInto<usize> + Copy,
+{
+    fn point_mut(&mut self, loc: P) -> Option<&mut T> {
+        let point: Point2D<I> = loc.into();
+        self.get_mut(point.y(), point.x())
     }
 }

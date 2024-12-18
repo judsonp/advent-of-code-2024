@@ -41,8 +41,10 @@ impl<T> Point<T, 2> {
     pub fn new(x: T, y: T) -> Self {
         Point { values: [x, y] }
     }
+}
 
-    pub fn from((x, y): (T, T)) -> Self {
+impl<T> From<(T, T)> for Point<T, 2> {
+    fn from((x, y): (T, T)) -> Self {
         Point { values: [x, y] }
     }
 }
@@ -51,8 +53,10 @@ impl<T> Point<T, 3> {
     pub fn new(x: T, y: T, z: T) -> Self {
         Point { values: [x, y, z] }
     }
+}
 
-    pub fn from((x, y, z): (T, T, T)) -> Self {
+impl<T> From<(T, T, T)> for Point<T, 3> {
+    fn from((x, y, z): (T, T, T)) -> Self {
         Point { values: [x, y, z] }
     }
 }
