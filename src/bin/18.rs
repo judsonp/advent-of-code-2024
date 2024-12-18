@@ -148,6 +148,7 @@ fn has_path(grid: &Grid<bool>, start: Point2D<isize>, end: Point2D<isize>) -> (b
         *visited.point_mut(loc).unwrap() = true;
         DIRECTIONS
             .iter()
+            .rev()
             .for_each(|&dir| stack.push(loc + dir.into()));
     }
 
