@@ -4,6 +4,7 @@ use advent_of_code::util::{
     direction::DIRECTIONS,
     grid::{GridGetPoint as _, GridGetPointMut as _},
     point::Point2D,
+    DistanceState,
 };
 use grid::Grid;
 
@@ -51,32 +52,6 @@ fn part_two_inner(input: &str, width: usize, height: usize) -> Option<String> {
     None
 }
 
-#[derive(Debug, Clone)]
-struct VisitState {
-    distance: u64,
-    location: Point2D<isize>,
-}
-
-impl PartialEq for VisitState {
-    fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance
-    }
-}
-
-impl Eq for VisitState {}
-
-impl PartialOrd for VisitState {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for VisitState {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.distance.cmp(&other.distance).reverse()
-    }
-}
-
 fn shortest_path_length(
     grid: &Grid<bool>,
     start: Point2D<isize>,
@@ -85,12 +60,13 @@ fn shortest_path_length(
     let mut visited_distances = Grid::init(grid.rows(), grid.cols(), None);
     let mut visit = BinaryHeap::new();
     *visited_distances.point_mut(start).unwrap() = Some(0);
-    visit.push(VisitState {
-        distance: 0,
-        location: start,
-    });
+    visit.push(DistanceState::new(0, start));
 
-    while let Some(VisitState { distance, location }) = visit.pop() {
+    while let Some(DistanceState {
+        distance,
+        state: location,
+    }) = visit.pop()
+    {
         if location == end {
             return Some(distance);
         }
@@ -113,10 +89,7 @@ fn shortest_path_length(
             let visited_distance = visited_distances.point_mut(new_loc).unwrap();
             if visited_distance.is_none() || new_distance < visited_distance.unwrap() {
                 *visited_distance = Some(new_distance);
-                visit.push(VisitState {
-                    distance: new_distance,
-                    location: new_loc,
-                });
+                visit.push(DistanceState::new(new_distance, new_loc));
             }
         }
     }

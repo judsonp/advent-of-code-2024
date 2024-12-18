@@ -1,11 +1,9 @@
-use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use advent_of_code::util::{
     direction::{Direction, DIRECTIONS},
     point::Point2D,
+    DistanceState,
 };
 use grid::Grid;
 use petgraph::{algo::dijkstra, graph::NodeIndex, visit::EdgeRef as _, Graph};
@@ -71,37 +69,6 @@ pub fn part_two(input: &str) -> Option<u64> {
     Some(locations_in_shortest_path.len() as u64)
 }
 
-struct NodeWithDistance {
-    node: NodeIndex,
-    distance: u64,
-}
-
-impl PartialEq for NodeWithDistance {
-    fn eq(&self, other: &Self) -> bool {
-        self.distance == other.distance
-    }
-}
-
-impl Eq for NodeWithDistance {}
-
-impl Ord for NodeWithDistance {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.distance.cmp(&other.distance).reverse()
-    }
-}
-
-impl PartialOrd for NodeWithDistance {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl NodeWithDistance {
-    fn new(node: NodeIndex, distance: u64) -> Self {
-        Self { node, distance }
-    }
-}
-
 fn all_shortest_paths(
     graph: &Graph<(), u64>,
     start: NodeIndex,
@@ -112,9 +79,13 @@ fn all_shortest_paths(
     let mut queue = BinaryHeap::new();
 
     distances.insert(start, 0);
-    queue.push(NodeWithDistance::new(start, 0));
+    queue.push(DistanceState::new(0, start));
 
-    while let Some(NodeWithDistance { node, distance }) = queue.pop() {
+    while let Some(DistanceState {
+        distance,
+        state: node,
+    }) = queue.pop()
+    {
         for edge in graph.edges(node) {
             let neighbor = edge.target();
             let weight = *edge.weight();
@@ -125,10 +96,10 @@ fn all_shortest_paths(
             if previous_distance.is_none() || previous_distance.unwrap() > &neighbor_distance {
                 distances.insert(neighbor, neighbor_distance);
                 previous.insert(neighbor, HashSet::from([node]));
-                queue.push(NodeWithDistance::new(neighbor, neighbor_distance));
+                queue.push(DistanceState::new(neighbor_distance, neighbor));
             } else if previous_distance.unwrap() == &neighbor_distance {
                 previous.get_mut(&neighbor).unwrap().insert(node);
-                queue.push(NodeWithDistance::new(neighbor, neighbor_distance));
+                queue.push(DistanceState::new(neighbor_distance, neighbor));
             }
         }
     }
