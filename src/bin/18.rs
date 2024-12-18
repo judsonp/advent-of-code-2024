@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BinaryHeap;
 
 use advent_of_code::util::{
     direction::DIRECTIONS,
@@ -6,7 +6,6 @@ use advent_of_code::util::{
     point::Point2D,
 };
 use grid::Grid;
-use petgraph::{algo::dijkstra, graph::NodeIndex, Graph, Undirected};
 
 advent_of_code::solution!(18);
 
@@ -17,17 +16,11 @@ pub fn part_one(input: &str) -> Option<u64> {
 fn part_one_inner(input: &str, width: usize, height: usize, fallen: usize) -> Option<u64> {
     let bytes = parse_input(input);
     let grid = build_grid(width, height, &bytes[0..fallen]);
-    let (graph, nodes) = build_graph(width, height, grid);
-
-    let start = *nodes.get(&Point2D::new(0, 0)).unwrap();
-    let end = *nodes
-        .get(&Point2D::new(width as isize - 1, height as isize - 1))
-        .unwrap();
-
-    let costs = dijkstra(&graph, start, Some(end), |_| 1);
-    let cost = *costs.get(&end).unwrap();
-
-    Some(cost)
+    shortest_path_length(
+        &grid,
+        (0, 0).into(),
+        (width as isize - 1, height as isize - 1).into(),
+    )
 }
 
 pub fn part_two(input: &str) -> Option<String> {
@@ -52,6 +45,79 @@ fn part_two_inner(input: &str, width: usize, height: usize) -> Option<String> {
                 return Some(format!("{},{}", byte.x(), byte.y()));
             }
             visited = new_visited;
+        }
+    }
+
+    None
+}
+
+#[derive(Debug, Clone)]
+struct VisitState {
+    distance: u64,
+    location: Point2D<isize>,
+}
+
+impl PartialEq for VisitState {
+    fn eq(&self, other: &Self) -> bool {
+        self.distance == other.distance
+    }
+}
+
+impl Eq for VisitState {}
+
+impl PartialOrd for VisitState {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VisitState {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.distance.cmp(&other.distance).reverse()
+    }
+}
+
+fn shortest_path_length(
+    grid: &Grid<bool>,
+    start: Point2D<isize>,
+    end: Point2D<isize>,
+) -> Option<u64> {
+    let mut visited_distances = Grid::init(grid.rows(), grid.cols(), None);
+    let mut visit = BinaryHeap::new();
+    *visited_distances.point_mut(start).unwrap() = Some(0);
+    visit.push(VisitState {
+        distance: 0,
+        location: start,
+    });
+
+    while let Some(VisitState { distance, location }) = visit.pop() {
+        if location == end {
+            return Some(distance);
+        }
+
+        for &dir in DIRECTIONS.iter() {
+            let new_loc = location + dir.into();
+            if new_loc.x() < 0
+                || new_loc.y() < 0
+                || new_loc.x() >= grid.cols() as isize
+                || new_loc.y() >= grid.rows() as isize
+            {
+                continue;
+            }
+
+            if !*grid.point(new_loc).unwrap() {
+                continue;
+            }
+
+            let new_distance = distance + 1;
+            let visited_distance = visited_distances.point_mut(new_loc).unwrap();
+            if visited_distance.is_none() || new_distance < visited_distance.unwrap() {
+                *visited_distance = Some(new_distance);
+                visit.push(VisitState {
+                    distance: new_distance,
+                    location: new_loc,
+                });
+            }
         }
     }
 
@@ -98,50 +164,6 @@ fn build_grid(width: usize, height: usize, bytes: &[Point2D<isize>]) -> Grid<boo
     }
 
     grid
-}
-
-fn build_graph(
-    width: usize,
-    height: usize,
-    usable: Grid<bool>,
-) -> (
-    Graph<(), (), Undirected>,
-    HashMap<Point2D<isize>, NodeIndex>,
-) {
-    let mut graph = Graph::<(), (), Undirected>::new_undirected();
-    let mut nodes = HashMap::new();
-
-    for y in 0..height {
-        for x in 0..width {
-            let point = Point2D::new(x as isize, y as isize);
-            if !usable.point(point).unwrap() {
-                continue;
-            }
-
-            let node = graph.add_node(());
-            nodes.insert(point, node);
-        }
-    }
-
-    for y in 0..height {
-        for x in 0..width {
-            let point = Point2D::new(x as isize, y as isize);
-            let node = nodes.get(&point);
-            if node.is_none() {
-                continue;
-            }
-            let node = *node.unwrap();
-
-            let neighbors = DIRECTIONS.map(|dir| point + dir.into());
-            for neighbor in neighbors {
-                if let Some(neighbor_node) = nodes.get(&neighbor) {
-                    graph.add_edge(node, *neighbor_node, ());
-                }
-            }
-        }
-    }
-
-    (graph, nodes)
 }
 
 fn parse_input(input: &str) -> Vec<Point2D<isize>> {
