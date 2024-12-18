@@ -86,15 +86,13 @@ impl Eq for NodeWithDistance {}
 
 impl Ord for NodeWithDistance {
     fn cmp(&self, other: &Self) -> Ordering {
-        other.distance.cmp(&self.distance).reverse()
+        self.distance.cmp(&other.distance).reverse()
     }
 }
 
-#[allow(clippy::non_canonical_partial_ord_impl)]
 impl PartialOrd for NodeWithDistance {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        // This seems completely wrong, but is necessary for it to work.
-        Some(self.cmp(other).reverse())
+        Some(self.cmp(other))
     }
 }
 
