@@ -25,10 +25,10 @@ fn part_one_inner(input: &str, width: usize, height: usize, fallen: usize) -> Op
 }
 
 pub fn part_two(input: &str) -> Option<String> {
-    part_two_inner(input, 71, 71)
+    part_two_inner(input, 71, 71, 1024)
 }
 
-fn part_two_inner(input: &str, width: usize, height: usize) -> Option<String> {
+fn part_two_inner(input: &str, width: usize, height: usize, previsit: usize) -> Option<String> {
     let bytes = parse_input(input);
 
     let mut grid = Grid::init(height, width, true);
@@ -36,8 +36,12 @@ fn part_two_inner(input: &str, width: usize, height: usize) -> Option<String> {
     let start = (0, 0).into();
     let end = (width as isize - 1, height as isize - 1).into();
 
-    let mut visited = Grid::init(height, width, true);
-    for byte in bytes {
+    for byte in &bytes[0..previsit] {
+        *grid.point_mut(*byte).unwrap() = false;
+    }
+    let (_, mut visited) = has_path(&grid, start, end);
+
+    for &byte in &bytes[previsit..] {
         *grid.point_mut(byte).unwrap() = false;
 
         if *visited.point(byte).unwrap() {
@@ -167,7 +171,12 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = part_two_inner(&advent_of_code::template::read_file("examples", DAY), 7, 7);
+        let result = part_two_inner(
+            &advent_of_code::template::read_file("examples", DAY),
+            7,
+            7,
+            12,
+        );
         assert_eq!(result, Some("6,1".to_owned()));
     }
 }
