@@ -33,7 +33,7 @@ fn can_make_pattern<'a>(
     towels: &[&str],
     memo: &mut HashMap<&'a str, bool>,
 ) -> bool {
-    if pattern.len() == 0 {
+    if pattern.is_empty() {
         return true;
     }
 
@@ -55,7 +55,7 @@ fn ways_to_make_pattern<'a>(
     towels: &[&str],
     memo: &mut HashMap<&'a str, u64>,
 ) -> u64 {
-    if pattern.len() == 0 {
+    if pattern.is_empty() {
         return 1;
     }
 
