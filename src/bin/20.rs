@@ -1,6 +1,9 @@
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-use advent_of_code::util::{direction::DIRECTIONS, point::Point2D, DistanceState};
+use advent_of_code::util::{
+    direction::DIRECTIONS, iter::CountIf as _, point::Point2D, DistanceState,
+};
+use rayon::iter::{ParallelBridge, ParallelIterator as _};
 
 advent_of_code::solution!(20);
 
@@ -17,18 +20,19 @@ fn solve(input: &str, allowed_distance: i32, saves: i32) -> Option<u64> {
 
     let path = shortest_path(&input.map, input.start, input.end).unwrap();
 
-    let mut viable_cheats = 0;
-    for cheat_start_idx in 0..path.len() {
-        for cheat_end_idx in (cheat_start_idx + saves as usize)..path.len() {
-            let cheat_start = path[cheat_start_idx];
-            let cheat_end = path[cheat_end_idx];
-            let cheat_distance = cheat_start.manhattan_distance(cheat_end);
-            let cheat_saved_distance = (cheat_end_idx - cheat_start_idx) as i32 - cheat_distance;
-            if cheat_distance <= allowed_distance && cheat_saved_distance >= saves {
-                viable_cheats += 1;
-            }
-        }
-    }
+    let viable_cheats = (0..path.len())
+        .par_bridge()
+        .map(|cheat_start_idx| {
+            ((cheat_start_idx + saves as usize)..path.len()).count_if(|cheat_end_idx| {
+                let cheat_start = path[cheat_start_idx];
+                let cheat_end = path[cheat_end_idx];
+                let cheat_distance = cheat_start.manhattan_distance(cheat_end);
+                let cheat_saved_distance =
+                    (cheat_end_idx - cheat_start_idx) as i32 - cheat_distance;
+                cheat_distance <= allowed_distance && cheat_saved_distance >= saves
+            }) as u64
+        })
+        .sum();
 
     Some(viable_cheats)
 }
@@ -138,7 +142,11 @@ mod tests {
 
     #[test]
     fn test_part_two() {
-        let result = solve(&advent_of_code::template::read_file("examples", DAY), 20, 74);
+        let result = solve(
+            &advent_of_code::template::read_file("examples", DAY),
+            20,
+            74,
+        );
         assert_eq!(result, Some(7));
     }
 }
