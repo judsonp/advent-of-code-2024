@@ -1,7 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use itertools::Itertools;
-use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator as _};
+use rayon::iter::{ParallelBridge, ParallelIterator as _};
+use smallvec::SmallVec;
 
 advent_of_code::solution!(22);
 
@@ -17,87 +18,57 @@ pub fn part_one(input: &str) -> Option<u64> {
 pub fn part_two(input: &str) -> Option<u64> {
     let start_values = parse_input(input);
 
-    // secret_values[i] is the list of 2000+1 secret values for vendor i
-    let secret_values = start_values
-        .into_iter()
-        .par_bridge()
-        .map(|start| secret_values(start, 2000))
-        .collect::<Vec<_>>();
-
-    // prices[i] is the list of 2000+1 prices for vendor i
-    let prices = secret_values
-        .into_iter()
-        .par_bridge()
-        .map(|secrets| {
-            secrets
-                .into_iter()
-                .map(|secret| (secret % 10) as i8)
-                .collect_vec()
-        })
-        .collect::<Vec<_>>();
-
-    // deltas[i] is a list for each vendor where
-    // deltas[i][j] is the price difference from prices[i][j] to prices[i][j+1] (so, 2000)
-    let deltas = prices
-        .par_iter()
-        .map(|pricelist| {
-            pricelist
-                .iter()
-                .cloned()
-                .tuple_windows()
-                .map(|(a, b)| b - a)
-                .collect_vec()
-        })
-        .collect::<Vec<_>>();
-
     // price_map[i] is, for vendor i,
     // a map of (four-delta sequence) to (applicable price)
     // where the appicable price is the price associated with the
     // first tie that sequence appears (for that vendor)
-    let price_map = prices
-        .iter()
-        .zip(deltas.iter())
-        .par_bridge()
-        .map(|(price_list, delta_list)| vendor_price_map(price_list, delta_list))
-        .collect::<Vec<_>>();
-
-    let possible_sequences = price_map
-        .iter()
-        .flat_map(|map| map.keys())
-        .collect::<HashSet<_>>();
-
-    let sequence_values = possible_sequences
+    let price_maps = start_values
         .into_iter()
         .par_bridge()
-        .map(|sequence| {
-            (
-                sequence,
-                price_map
-                    .iter()
-                    .map(|map| map.get(sequence).cloned().unwrap_or(0) as u64)
-                    .sum::<u64>(),
-            )
-        })
-        .collect::<HashMap<_, _>>();
+        .map(|start| build_vendor_price_map(start, 2000))
+        .collect::<Vec<_>>();
 
-    let best_value = *sequence_values.values().max().unwrap();
+    let sequence_values = price_maps
+        .into_iter()
+        .flat_map(|map| map.into_iter())
+        .into_grouping_map()
+        .sum();
 
-    Some(best_value)
+    let best_value = sequence_values.into_values().max().unwrap();
+
+    Some(best_value as u64)
 }
 
 type DeltaSequence = [i8; 4];
-type VendorPriceMap = HashMap<DeltaSequence, i8>;
+type VendorPriceMap = HashMap<DeltaSequence, u32>;
 
-fn vendor_price_map(price_list: &[i8], delta_list: &[i8]) -> VendorPriceMap {
+fn build_vendor_price_map(initial_secret: u64, iterations: u32) -> VendorPriceMap {
+    let mut secret = initial_secret;
+    let mut previous_price = (initial_secret % 10) as i8;
+    let mut sequence: SmallVec<[i8; 4]> = SmallVec::new();
     let mut map = VendorPriceMap::new();
 
-    assert!(price_list.len() == delta_list.len() + 1);
+    for _ in 0..iterations {
+        secret = iterate(secret);
+        let price = (secret % 10) as i8;
+        let delta = price - previous_price;
 
-    for i in 3..delta_list.len() {
-        let sequence: &[i8] = &delta_list[i - 3..=i];
-        if !map.contains_key(sequence) {
-            map.insert(sequence.try_into().unwrap(), price_list[i + 1]);
+        if sequence.len() == 4 {
+            sequence.rotate_left(1);
+            sequence.pop();
+            sequence.push(delta);
+
+            if !map.contains_key(&sequence[0..4]) {
+                map.insert(
+                    array_init::from_iter(sequence.iter().cloned()).unwrap(),
+                    price as u32,
+                );
+            }
+        } else {
+            sequence.push(delta);
         }
+
+        previous_price = price;
     }
 
     map
@@ -109,17 +80,6 @@ fn secret_value(initial_value: u64, iterations: u32) -> u64 {
         value = iterate(value);
     }
     value
-}
-
-fn secret_values(initial_value: u64, iterations: u32) -> Vec<u64> {
-    let mut values = Vec::with_capacity((iterations + 1) as usize);
-    let mut value = initial_value;
-    values.push(value);
-    for _ in 0..iterations {
-        value = iterate(value);
-        values.push(value);
-    }
-    values
 }
 
 fn iterate(mut value: u64) -> u64 {
