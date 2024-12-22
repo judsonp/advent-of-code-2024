@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
+use rayon::iter::{IntoParallelRefIterator, ParallelBridge, ParallelIterator as _};
 
 advent_of_code::solution!(22);
 
@@ -19,24 +20,26 @@ pub fn part_two(input: &str) -> Option<u64> {
     // secret_values[i] is the list of 2000+1 secret values for vendor i
     let secret_values = start_values
         .into_iter()
+        .par_bridge()
         .map(|start| secret_values(start, 2000))
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     // prices[i] is the list of 2000+1 prices for vendor i
     let prices = secret_values
         .into_iter()
+        .par_bridge()
         .map(|secrets| {
             secrets
                 .into_iter()
                 .map(|secret| (secret % 10) as i8)
                 .collect_vec()
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     // deltas[i] is a list for each vendor where
     // deltas[i][j] is the price difference from prices[i][j] to prices[i][j+1] (so, 2000)
     let deltas = prices
-        .iter()
+        .par_iter()
         .map(|pricelist| {
             pricelist
                 .iter()
@@ -45,7 +48,7 @@ pub fn part_two(input: &str) -> Option<u64> {
                 .map(|(a, b)| b - a)
                 .collect_vec()
         })
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     // price_map[i] is, for vendor i,
     // a map of (four-delta sequence) to (applicable price)
@@ -54,8 +57,9 @@ pub fn part_two(input: &str) -> Option<u64> {
     let price_map = prices
         .iter()
         .zip(deltas.iter())
+        .par_bridge()
         .map(|(price_list, delta_list)| vendor_price_map(price_list, delta_list))
-        .collect_vec();
+        .collect::<Vec<_>>();
 
     let possible_sequences = price_map
         .iter()
@@ -64,6 +68,7 @@ pub fn part_two(input: &str) -> Option<u64> {
 
     let sequence_values = possible_sequences
         .into_iter()
+        .par_bridge()
         .map(|sequence| {
             (
                 sequence,
@@ -107,7 +112,7 @@ fn secret_value(initial_value: u64, iterations: u32) -> u64 {
 }
 
 fn secret_values(initial_value: u64, iterations: u32) -> Vec<u64> {
-    let mut values = Vec::new();
+    let mut values = Vec::with_capacity((iterations + 1) as usize);
     let mut value = initial_value;
     values.push(value);
     for _ in 0..iterations {
