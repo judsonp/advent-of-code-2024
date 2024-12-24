@@ -70,7 +70,7 @@ fn bron_kerbosch_inner(
     mut p: HashSet<Computer>,
     mut x: HashSet<Computer>,
 ) {
-    if p.len() == 0 && x.len() == 0 {
+    if p.is_empty() && x.is_empty() {
         max_cliques.push(r.clone());
         return;
     }
@@ -94,8 +94,8 @@ struct Computer(u16);
 impl From<&str> for Computer {
     fn from(s: &str) -> Self {
         Computer(
-            (s.bytes().nth(0).unwrap() - b'a') as u16 * 26
-                + (s.bytes().nth(1).unwrap() - b'a') as u16,
+            (s.as_bytes()[0] - b'a') as u16 * 26
+                + (s.as_bytes()[1] - b'a') as u16,
         )
     }
 }
