@@ -93,10 +93,7 @@ struct Computer(u16);
 
 impl From<&str> for Computer {
     fn from(s: &str) -> Self {
-        Computer(
-            (s.as_bytes()[0] - b'a') as u16 * 26
-                + (s.as_bytes()[1] - b'a') as u16,
-        )
+        Computer((s.as_bytes()[0] - b'a') as u16 * 26 + (s.as_bytes()[1] - b'a') as u16)
     }
 }
 
